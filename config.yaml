@@ -1,0 +1,82 @@
+# CMExam + Qwen3.5 DSW experiment configuration.
+# Edit paths to match the persistent mount inside the DSW instance.
+paths:
+  raw_data_dir: /mnt/workspace/CMExam-main/data
+  model_4b: /mnt/workspace/models/Qwen3.5-4B
+  model_08b: /mnt/workspace/models/Qwen3.5-0.8B-Base
+  work_dir: /mnt/workspace/qwen35_cmexam
+  output_dir: /mnt/workspace/qwen35_cmexam/outputs
+  data_dir: /mnt/workspace/qwen35_cmexam/data
+
+data:
+  train_file: train.csv
+  val_file: val.csv
+  test_file: test_with_annotations.csv
+  question_column: Question
+  options_column: Options
+  answer_column: Answer
+  explanation_column: Explanation
+  id_column: ID
+  deduplicate_across_splits: true
+
+prompt:
+  version: cmexam_v1
+  system: |-
+    你是医学考试答题助手。请根据题干和选项作答，不要改写题目。
+    严格按以下两行格式回答：
+    答案：单选题写一个选项字母；多选题按字母顺序写出全部选项字母。
+    解析：用简洁文字说明判断依据。
+    不要添加其他标题、寒暄或与答案无关的内容。
+  thinking: false
+
+models:
+  dtype: bfloat16
+  attn_implementation: sdpa
+  device: cuda:0
+  model_4b_label: Qwen3.5-4B-posttrained
+  model_08b_label: Qwen3.5-0.8B-Base
+
+generation:
+  max_input_tokens: 512
+  max_new_tokens: 256
+  do_sample: false
+
+training:
+  seed: 42
+  max_length: 512
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 8
+  learning_rate: 0.0001
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  logging_steps: 20
+  eval_steps: 500
+  save_steps: 500
+  save_total_limit: 2
+  dataloader_num_workers: 2
+  dataset_num_proc: 2
+  lora_rank: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  target_modules: all-linear
+  gradient_checkpointing: true
+  eval_strategy: steps
+  metric_for_best_model: eval_loss
+
+distillation:
+  temperatures: [2.0, 4.0]
+  max_completion_length: 256
+  beta: 0.0
+  lambda_online: 0.0
+  sft_alpha: 1.0
+  logits_topk: 0
+
+evaluation:
+  answer_metric: exact_set_match
+  explanation_blind_sample_size: 300
+  explanation_rating_max: 6
+  seed: 42
